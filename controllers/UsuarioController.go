@@ -78,15 +78,15 @@ func PostUsuario(c *gin.Context) {
 func RegistroCompleto(c *gin.Context) {
 	// 1. Estructura para el input
 	var input struct {
-		Nombre           string    `json:"nombre" binding:"required"`
-		ApellidoPaterno  string    `json:"apellido_paterno" binding:"required"`
-		ApellidoMaterno  string    `json:"apellido_materno" binding:"required"`
-		Correo           string    `json:"correo" binding:"required,email"`
-		Telefono         string    `json:"telefono"`
-		FechaNacimiento  string    `json:"fecha_nacimiento" binding:"required"`
-		Genero           string    `json:"genero" binding:"required,oneof=masculino femenino otro"`
-		Direccion        string    `json:"direccion"`
-		Contrasena       string    `json:"contrasena" binding:"required,min=8"`
+		Nombre          string `json:"nombre" binding:"required"`
+		ApellidoPaterno string `json:"apellido_paterno" binding:"required"`
+		ApellidoMaterno string `json:"apellido_materno" binding:"required"`
+		Correo          string `json:"correo" binding:"required,email"`
+		Telefono        string `json:"telefono"`
+		FechaNacimiento string `json:"fecha_nacimiento" binding:"required"`
+		Genero          string `json:"genero" binding:"required,oneof=masculino femenino otro"`
+		Direccion       string `json:"direccion"`
+		Contrasena      string `json:"contrasena" binding:"required,min=8"`
 	}
 
 	// 2. Validar el input

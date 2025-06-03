@@ -1,9 +1,9 @@
 package main
 
 import (
-	"CMedicas/controllers"
 	"CMedicas/initializers"
 	"CMedicas/migrate"
+	"CMedicas/routes"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,17 +19,7 @@ func main() {
 	r := gin.Default()
 
 	// Rutas
-	persona := r.Group("persona")
-	{
-		persona.POST("/agregar", controllers.PostPersona) 
-		persona.GET("", controllers.GetAllPersonas)
-		persona.GET("/:id", controllers.GetPersona)
-		persona.PUT("/:id", controllers.UpdatePersona)
-		persona.DELETE("/eliminar", controllers.DeletePersona)
-
-	}
-
-
+	routes.AdminRutas(r)
 
 	r.Run()
 }
