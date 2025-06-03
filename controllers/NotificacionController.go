@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
-	"github.com/Ilimm9/CMedicas/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -25,7 +25,7 @@ func PostNotificacion(c *gin.Context) {
 	var input NotificacionInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -33,9 +33,9 @@ func PostNotificacion(c *gin.Context) {
 	var usuario models.Usuario
 	if err := initializers.GetDB().First(&usuario, input.IDUsuario).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusBadRequest, "Usuario no encontrado")
+			respuestas.RespondError(c, http.StatusBadRequest, "Usuario no encontrado")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al verificar usuario: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar usuario: "+err.Error())
 		}
 		return
 	}
@@ -44,16 +44,16 @@ func PostNotificacion(c *gin.Context) {
 	var cita models.Cita
 	if err := initializers.GetDB().First(&cita, input.CitaID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusBadRequest, "Cita no encontrada")
+			respuestas.RespondError(c, http.StatusBadRequest, "Cita no encontrada")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al verificar cita: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar cita: "+err.Error())
 		}
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
@@ -67,12 +67,12 @@ func PostNotificacion(c *gin.Context) {
 
 	if err := tx.Create(&notificacion).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al guardar notificación: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al guardar notificación: "+err.Error())
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
@@ -83,18 +83,18 @@ func PostNotificacion(c *gin.Context) {
 		Preload("Cita.Paciente").
 		Preload("Cita.Medico").
 		First(&notificacion, notificacion.ID).Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al cargar datos de la notificación: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al cargar datos de la notificación: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusCreated, notificacion)
+	respuestas.RespondSuccess(c, http.StatusCreated, notificacion)
 }
 
 // Obtiener notificación por ID
 func GetNotificacion(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
@@ -109,21 +109,21 @@ func GetNotificacion(c *gin.Context) {
 
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusNotFound, "Notificación no encontrada")
+			respuestas.RespondError(c, http.StatusNotFound, "Notificación no encontrada")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar notificación: "+result.Error.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar notificación: "+result.Error.Error())
 		}
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, notificacion)
+	respuestas.RespondSuccess(c, http.StatusOK, notificacion)
 }
 
-// Obtiener las notificaciones de un usuario 
+// Obtiener las notificaciones de un usuario
 func GetNotificacionesPorUsuario(c *gin.Context) {
 	usuarioID, err := strconv.Atoi(c.Param("usuario_id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID de usuario inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID de usuario inválido")
 		return
 	}
 
@@ -137,18 +137,18 @@ func GetNotificacionesPorUsuario(c *gin.Context) {
 		Find(&notificaciones)
 
 	if result.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al obtener notificaciones: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al obtener notificaciones: "+result.Error.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, notificaciones)
+	respuestas.RespondSuccess(c, http.StatusOK, notificaciones)
 }
 
 // Obtener notificaciones de una cita específica
 func GetNotificacionesPorCita(c *gin.Context) {
 	citaID, err := strconv.Atoi(c.Param("cita_id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID de cita inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID de cita inválido")
 		return
 	}
 
@@ -161,18 +161,18 @@ func GetNotificacionesPorCita(c *gin.Context) {
 		Find(&notificaciones)
 
 	if result.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al obtener notificaciones: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al obtener notificaciones: "+result.Error.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, notificaciones)
+	respuestas.RespondSuccess(c, http.StatusOK, notificaciones)
 }
 
 // Actualizar notificación
 func UpdateNotificacion(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
@@ -182,13 +182,13 @@ func UpdateNotificacion(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
@@ -196,9 +196,9 @@ func UpdateNotificacion(c *gin.Context) {
 	if err := tx.First(&notificacion, id).Error; err != nil {
 		tx.Rollback()
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusNotFound, "Notificación no encontrada")
+			respuestas.RespondError(c, http.StatusNotFound, "Notificación no encontrada")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar notificación: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar notificación: "+err.Error())
 		}
 		return
 	}
@@ -212,12 +212,12 @@ func UpdateNotificacion(c *gin.Context) {
 
 	if err := tx.Save(&notificacion).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al actualizar notificación: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al actualizar notificación: "+err.Error())
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
@@ -228,44 +228,44 @@ func UpdateNotificacion(c *gin.Context) {
 		Preload("Cita.Paciente").
 		Preload("Cita.Medico").
 		First(&notificacion, notificacion.ID).Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al cargar datos actualizados: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al cargar datos actualizados: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, notificacion)
+	respuestas.RespondSuccess(c, http.StatusOK, notificacion)
 }
 
 // Eliminar notificación
 func DeleteNotificacion(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
 	result := tx.Delete(&models.Notificacion{}, id)
 	if result.Error != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al eliminar notificación: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar notificación: "+result.Error.Error())
 		return
 	}
 
 	if result.RowsAffected == 0 {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusNotFound, "Notificación no encontrada")
+		respuestas.RespondError(c, http.StatusNotFound, "Notificación no encontrada")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "Notificación eliminada correctamente"})
+	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"message": "Notificación eliminada correctamente"})
 }

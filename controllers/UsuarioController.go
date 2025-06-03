@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
 	"github.com/Ilimm9/CMedicas/utils"
@@ -25,7 +26,7 @@ func PostUsuario(c *gin.Context) {
 	var input UsuarioInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -33,22 +34,22 @@ func PostUsuario(c *gin.Context) {
 	var persona models.Persona
 	if err := initializers.GetDB().First(&persona, input.PersonaID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusBadRequest, "Persona no encontrada")
+			respuestas.RespondError(c, http.StatusBadRequest, "Persona no encontrada")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al verificar persona: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar persona: "+err.Error())
 		}
 		return
 	}
 
 	hashedPassword, err := utils.HashPassword(input.Contrasena)
 	if err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
@@ -61,18 +62,18 @@ func PostUsuario(c *gin.Context) {
 
 	if err := tx.Create(&usuario).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al guardar usuario: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al guardar usuario: "+err.Error())
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
 	usuario.Contrasena = ""
 
-	utils.RespondSuccess(c, http.StatusCreated, usuario)
+	respuestas.RespondSuccess(c, http.StatusCreated, usuario)
 }
 
 func RegistroCompleto(c *gin.Context) {
@@ -91,14 +92,14 @@ func RegistroCompleto(c *gin.Context) {
 
 	// 2. Validar el input
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// 3. Parsear fecha (formato: "dd/mm/aaaa")
 	fechaNac, err := time.Parse("02/01/2006", input.FechaNacimiento)
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "Formato de fecha inválido. Use dd/mm/aaaa")
+		respuestas.RespondError(c, http.StatusBadRequest, "Formato de fecha inválido. Use dd/mm/aaaa")
 		return
 	}
 
@@ -123,7 +124,7 @@ func RegistroCompleto(c *gin.Context) {
 
 	if err := tx.Create(&persona).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al crear persona")
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al crear persona")
 		return
 	}
 
@@ -138,7 +139,7 @@ func RegistroCompleto(c *gin.Context) {
 
 	if err := tx.Create(&usuario).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusConflict, "El correo ya está registrado")
+		respuestas.RespondError(c, http.StatusConflict, "El correo ya está registrado")
 		return
 	}
 
@@ -147,7 +148,7 @@ func RegistroCompleto(c *gin.Context) {
 
 	// No devolver datos sensibles
 	usuario.Contrasena = ""
-	utils.RespondSuccess(c, http.StatusCreated, gin.H{
+	respuestas.RespondSuccess(c, http.StatusCreated, gin.H{
 		"mensaje": "Registro exitoso",
 		"usuario": gin.H{
 			"id":     usuario.ID,
@@ -164,7 +165,7 @@ func RegistroCompleto(c *gin.Context) {
 func GetUsuario(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
@@ -172,15 +173,15 @@ func GetUsuario(c *gin.Context) {
 	result := initializers.GetDB().Preload("Persona").First(&usuario, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
+			respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+result.Error.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+result.Error.Error())
 		}
 		return
 	}
 
 	usuario.Contrasena = ""
-	utils.RespondSuccess(c, http.StatusOK, usuario)
+	respuestas.RespondSuccess(c, http.StatusOK, usuario)
 }
 
 // Obtener todos los usuarios
@@ -188,7 +189,7 @@ func GetAllUsuarios(c *gin.Context) {
 	var usuarios []models.Usuario
 	result := initializers.GetDB().Preload("Persona").Find(&usuarios)
 	if result.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al obtener usuarios: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al obtener usuarios: "+result.Error.Error())
 		return
 	}
 
@@ -197,14 +198,14 @@ func GetAllUsuarios(c *gin.Context) {
 		usuarios[i].Contrasena = ""
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, usuarios)
+	respuestas.RespondSuccess(c, http.StatusOK, usuarios)
 }
 
 // Actualizar usuario
 func UpdateUsuario(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
@@ -215,13 +216,13 @@ func UpdateUsuario(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
@@ -229,9 +230,9 @@ func UpdateUsuario(c *gin.Context) {
 	if err := tx.Preload("Persona").First(&usuario, id).Error; err != nil {
 		tx.Rollback()
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
+			respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+err.Error())
 		}
 		return
 	}
@@ -247,7 +248,7 @@ func UpdateUsuario(c *gin.Context) {
 		hashedPassword, err := utils.HashPassword(input.Contrasena)
 		if err != nil {
 			tx.Rollback()
-			utils.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
 			return
 		}
 		usuario.Contrasena = hashedPassword
@@ -255,52 +256,52 @@ func UpdateUsuario(c *gin.Context) {
 
 	if err := tx.Save(&usuario).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al actualizar usuario: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al actualizar usuario: "+err.Error())
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
 	usuario.Contrasena = ""
-	utils.RespondSuccess(c, http.StatusOK, usuario)
+	respuestas.RespondSuccess(c, http.StatusOK, usuario)
 }
 
 // Eliminar usuario
 func DeleteUsuario(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
 	result := tx.Delete(&models.Usuario{}, id)
 	if result.Error != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al eliminar usuario: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar usuario: "+result.Error.Error())
 		return
 	}
 
 	if result.RowsAffected == 0 {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
+		respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "Usuario eliminado correctamente"})
+	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"message": "Usuario eliminado correctamente"})
 }
 
 // Autenticar un usuario y devolver token JWT
@@ -311,57 +312,56 @@ func Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var usuario models.Usuario
 	if err := initializers.GetDB().Preload("Persona").Where("correo = ?", input.Correo).First(&usuario).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusUnauthorized, "Credenciales inválidas")
+			respuestas.RespondError(c, http.StatusUnauthorized, "Credenciales inválidas")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+err.Error())
 		}
 		return
 	}
 
 	if !utils.CheckPasswordHash(input.Contrasena, usuario.Contrasena) {
-		utils.RespondError(c, http.StatusUnauthorized, "Credenciales inválidas")
+		respuestas.RespondError(c, http.StatusUnauthorized, "Credenciales inválidas")
 		return
 	}
 
 	// Generar JWT
 	token, err := utils.GenerateJWT(usuario.ID, usuario.Rol)
 	if err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al generar token")
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al generar token")
 		return
 	}
 
 	usuario.Contrasena = ""
 
-	utils.RespondSuccess(c, http.StatusOK, gin.H{
+	respuestas.RespondSuccess(c, http.StatusOK, gin.H{
 		"token":   token,
 		"usuario": usuario,
 	})
 }
 
-
 // Obtiene información del usuario autenticado
 func GetCurrentUser(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		utils.RespondError(c, http.StatusUnauthorized, "No se pudo identificar al usuario")
+		respuestas.RespondError(c, http.StatusUnauthorized, "No se pudo identificar al usuario")
 		return
 	}
 
 	var usuario models.Usuario
 	result := initializers.GetDB().Preload("Persona").First(&usuario, userID)
 	if result.Error != nil {
-		utils.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
+		respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
 		return
 	}
 
 	// No devolver contraseña
 	usuario.Contrasena = ""
-	utils.RespondSuccess(c, http.StatusOK, usuario)
+	respuestas.RespondSuccess(c, http.StatusOK, usuario)
 }

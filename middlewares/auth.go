@@ -1,8 +1,10 @@
 package middlewares
 
 import (
-	"github.com/Ilimm9/CMedicas/utils"
 	"net/http"
+
+	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
+	"github.com/Ilimm9/CMedicas/utils"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -12,7 +14,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
 		if tokenString == "" {
-			utils.RespondError(c, http.StatusUnauthorized, "Se requiere token de autenticación")
+			respuestas.RespondError(c, http.StatusUnauthorized, "Se requiere token de autenticación")
 			c.Abort()
 			return
 		}
@@ -24,7 +26,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		token, err := utils.ValidateJWT(tokenString)
 		if err != nil {
-			utils.RespondError(c, http.StatusUnauthorized, "Token inválido: "+err.Error())
+			respuestas.RespondError(c, http.StatusUnauthorized, "Token inválido: "+err.Error())
 			c.Abort()
 			return
 		}
@@ -35,20 +37,20 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Set("userRol", claims["rol"])
 			c.Next()
 		} else {
-			utils.RespondError(c, http.StatusUnauthorized, "Token inválido")
+			respuestas.RespondError(c, http.StatusUnauthorized, "Token inválido")
 			c.Abort()
 		}
 	}
 }
 
 func AdminOnly() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        rol := c.GetString("userRol")
-        if rol != "administrador" {
-            utils.RespondError(c, http.StatusForbidden, "Acceso restringido a administradores")
-            c.Abort()
-            return
-        }
-        c.Next()
-    }
+	return func(c *gin.Context) {
+		rol := c.GetString("userRol")
+		if rol != "administrador" {
+			respuestas.RespondError(c, http.StatusForbidden, "Acceso restringido a administradores")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }

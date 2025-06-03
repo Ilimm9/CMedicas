@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
-	"github.com/Ilimm9/CMedicas/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -25,7 +25,7 @@ func PostHorario(c *gin.Context) {
 	var input HorarioInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -33,22 +33,22 @@ func PostHorario(c *gin.Context) {
 	var medico models.Medico
 	if err := initializers.GetDB().First(&medico, input.MedicoID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusBadRequest, "Médico no encontrado")
+			respuestas.RespondError(c, http.StatusBadRequest, "Médico no encontrado")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al verificar médico: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar médico: "+err.Error())
 		}
 		return
 	}
 
 	// Validar que la hora de fin sea mayor que la de inicio
 	if input.HoraFin.Before(input.HoraInicio) || input.HoraFin.Equal(input.HoraInicio) {
-		utils.RespondError(c, http.StatusBadRequest, "La hora de fin debe ser posterior a la hora de inicio")
+		respuestas.RespondError(c, http.StatusBadRequest, "La hora de fin debe ser posterior a la hora de inicio")
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
@@ -61,12 +61,12 @@ func PostHorario(c *gin.Context) {
 
 	if err := tx.Create(&horario).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al guardar horario: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al guardar horario: "+err.Error())
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
@@ -76,18 +76,18 @@ func PostHorario(c *gin.Context) {
 		Preload("Medico.Usuario").
 		Preload("Medico.Usuario.Persona").
 		First(&horario, horario.ID).Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al cargar datos del horario: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al cargar datos del horario: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusCreated, horario)
+	respuestas.RespondSuccess(c, http.StatusCreated, horario)
 }
 
 // GetHorario obtiene un horario por ID
 func GetHorario(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
@@ -100,14 +100,14 @@ func GetHorario(c *gin.Context) {
 
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusNotFound, "Horario no encontrado")
+			respuestas.RespondError(c, http.StatusNotFound, "Horario no encontrado")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar horario: "+result.Error.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar horario: "+result.Error.Error())
 		}
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, horario)
+	respuestas.RespondSuccess(c, http.StatusOK, horario)
 }
 
 // GetAllHorarios obtiene todos los horarios
@@ -120,18 +120,18 @@ func GetAllHorarios(c *gin.Context) {
 		Find(&horarios)
 
 	if result.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al obtener horarios: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al obtener horarios: "+result.Error.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, horarios)
+	respuestas.RespondSuccess(c, http.StatusOK, horarios)
 }
 
 // GetHorariosPorMedico obtiene los horarios de un médico específico
 func GetHorariosPorMedico(c *gin.Context) {
 	medicoID, err := strconv.Atoi(c.Param("medico_id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID de médico inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID de médico inválido")
 		return
 	}
 
@@ -142,18 +142,18 @@ func GetHorariosPorMedico(c *gin.Context) {
 		Find(&horarios)
 
 	if result.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al obtener horarios: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al obtener horarios: "+result.Error.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, horarios)
+	respuestas.RespondSuccess(c, http.StatusOK, horarios)
 }
 
 // UpdateHorario actualiza un horario existente
 func UpdateHorario(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
@@ -164,13 +164,13 @@ func UpdateHorario(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
@@ -178,9 +178,9 @@ func UpdateHorario(c *gin.Context) {
 	if err := tx.First(&horario, id).Error; err != nil {
 		tx.Rollback()
 		if err == gorm.ErrRecordNotFound {
-			utils.RespondError(c, http.StatusNotFound, "Horario no encontrado")
+			respuestas.RespondError(c, http.StatusNotFound, "Horario no encontrado")
 		} else {
-			utils.RespondError(c, http.StatusInternalServerError, "Error al buscar horario: "+err.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar horario: "+err.Error())
 		}
 		return
 	}
@@ -199,18 +199,18 @@ func UpdateHorario(c *gin.Context) {
 	// Validar que la hora de fin sea mayor que la de inicio
 	if horario.HoraFin.Before(horario.HoraInicio) || horario.HoraFin.Equal(horario.HoraInicio) {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusBadRequest, "La hora de fin debe ser posterior a la hora de inicio")
+		respuestas.RespondError(c, http.StatusBadRequest, "La hora de fin debe ser posterior a la hora de inicio")
 		return
 	}
 
 	if err := tx.Save(&horario).Error; err != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al actualizar horario: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al actualizar horario: "+err.Error())
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
@@ -220,44 +220,44 @@ func UpdateHorario(c *gin.Context) {
 		Preload("Medico.Usuario").
 		Preload("Medico.Usuario.Persona").
 		First(&horario, horario.ID).Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al cargar datos actualizados: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al cargar datos actualizados: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, horario)
+	respuestas.RespondSuccess(c, http.StatusOK, horario)
 }
 
 // DeleteHorario elimina un horario
 func DeleteHorario(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		utils.RespondError(c, http.StatusBadRequest, "ID inválido")
+		respuestas.RespondError(c, http.StatusBadRequest, "ID inválido")
 		return
 	}
 
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
 		return
 	}
 
 	result := tx.Delete(&models.Horario{}, id)
 	if result.Error != nil {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusInternalServerError, "Error al eliminar horario: "+result.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar horario: "+result.Error.Error())
 		return
 	}
 
 	if result.RowsAffected == 0 {
 		tx.Rollback()
-		utils.RespondError(c, http.StatusNotFound, "Horario no encontrado")
+		respuestas.RespondError(c, http.StatusNotFound, "Horario no encontrado")
 		return
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		utils.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
-	utils.RespondSuccess(c, http.StatusOK, gin.H{"message": "Horario eliminado correctamente"})
+	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"message": "Horario eliminado correctamente"})
 }
