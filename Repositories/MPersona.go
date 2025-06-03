@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"CMedicas/models"
+	"github.com/Ilimm9/CMedicas/models"
 	"gorm.io/gorm"
 )
 

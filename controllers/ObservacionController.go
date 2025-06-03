@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"CMedicas/initializers"
-	"CMedicas/models"
-	"CMedicas/utils"
+	"github.com/Ilimm9/CMedicas/initializers"
+	"github.com/Ilimm9/CMedicas/models"
+	"github.com/Ilimm9/CMedicas/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

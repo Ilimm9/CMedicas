@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"CMedicas/utils"
+	"github.com/Ilimm9/CMedicas/utils"
 	"net/http"
 
 	"github.com/dgrijalva/jwt-go"

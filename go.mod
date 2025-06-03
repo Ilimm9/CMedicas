@@ -1,4 +1,4 @@
-module CMedicas
+module github.com/Ilimm9/CMedicas
 
 go 1.23.4
 

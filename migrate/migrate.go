@@ -1,8 +1,8 @@
 package migrate
 
 import (
-	"CMedicas/initializers"
-	"CMedicas/models"
+	"github.com/Ilimm9/CMedicas/initializers"
+	"github.com/Ilimm9/CMedicas/models"
 )
 
 func Migrations(){

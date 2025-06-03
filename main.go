@@ -1,9 +1,9 @@
 package main
 
 import (
-	"CMedicas/initializers"
-	"CMedicas/migrate"
-	"CMedicas/routes"
+	"github.com/Ilimm9/CMedicas/initializers"
+	"github.com/Ilimm9/CMedicas/migrate"
+	"github.com/Ilimm9/CMedicas/routes"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"CMedicas/controllers"
-	"CMedicas/middlewares"
+	"github.com/Ilimm9/CMedicas/controllers"
+	"github.com/Ilimm9/CMedicas/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
