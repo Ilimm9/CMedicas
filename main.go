@@ -10,7 +10,7 @@ import (
 
 
 func init(){
-	initializers.LoadEnv()
+	// initializers.LoadEnv()
 	initializers.ConnectDB()
 	migrate.Migrations()
 }
