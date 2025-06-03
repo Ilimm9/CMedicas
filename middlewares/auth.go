@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
-	"github.com/Ilimm9/CMedicas/utils"
+	"github.com/Ilimm9/CMedicas/clave"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -24,7 +24,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			tokenString = tokenString[7:]
 		}
 
-		token, err := utils.ValidateJWT(tokenString)
+		token, err := clave.ValidateJWT(tokenString)
 		if err != nil {
 			respuestas.RespondError(c, http.StatusUnauthorized, "Token inválido: "+err.Error())
 			c.Abort()

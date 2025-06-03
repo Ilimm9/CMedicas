@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Ilimm9/CMedicas/Respuestas"
+	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
+	"github.com/Ilimm9/CMedicas/clave"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
-	"github.com/Ilimm9/CMedicas/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -41,7 +41,7 @@ func PostUsuario(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := utils.HashPassword(input.Contrasena)
+	hashedPassword, err := clave.HashPassword(input.Contrasena)
 	if err != nil {
 		respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
 		return
@@ -129,7 +129,7 @@ func RegistroCompleto(c *gin.Context) {
 	}
 
 	// 6. Crear Usuario (rol "paciente" por defecto)
-	hashedPassword, _ := utils.HashPassword(input.Contrasena)
+	hashedPassword, _ := clave.HashPassword(input.Contrasena)
 	usuario := models.Usuario{
 		PersonaID:  persona.ID,
 		Correo:     input.Correo,
@@ -245,7 +245,7 @@ func UpdateUsuario(c *gin.Context) {
 		usuario.Correo = input.Correo
 	}
 	if input.Contrasena != "" {
-		hashedPassword, err := utils.HashPassword(input.Contrasena)
+		hashedPassword, err := clave.HashPassword(input.Contrasena)
 		if err != nil {
 			tx.Rollback()
 			respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
@@ -326,13 +326,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if !utils.CheckPasswordHash(input.Contrasena, usuario.Contrasena) {
+	if !clave.CheckPasswordHash(input.Contrasena, usuario.Contrasena) {
 		respuestas.RespondError(c, http.StatusUnauthorized, "Credenciales inválidas")
 		return
 	}
 
 	// Generar JWT
-	token, err := utils.GenerateJWT(usuario.ID, usuario.Rol)
+	token, err := clave.GenerateJWT(usuario.ID, usuario.Rol)
 	if err != nil {
 		respuestas.RespondError(c, http.StatusInternalServerError, "Error al generar token")
 		return
