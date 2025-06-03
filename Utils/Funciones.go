@@ -20,9 +20,17 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+// Clave secreta para firmar los tokens (esta en env)
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		panic("JWT_SECRET no definido")
+	}
+	return []byte(secret)
+}
 
 // Clave secreta para firmar los tokens (esta en env)
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+// var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 // Genera un token JWT para un usuario
 func GenerateJWT(userID uint, rol string) (string, error) {
@@ -33,16 +41,26 @@ func GenerateJWT(userID uint, rol string) (string, error) {
 		"exp": time.Now().Add(time.Hour * 24).Unix(), // Expira en 24 hora (modificar, al terminar pruebas)
 	})
 
-	return token.SignedString(jwtSecret)
+	return token.SignedString(getJWTSecret())
+	// return token.SignedString(jwtSecret)
 }
 
 // Validar token
+// func ValidateJWT(tokenString string) (*jwt.Token, error) {
+// 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+// 		// Verifica el método de firma
+// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, jwt.ErrSignatureInvalid
+// 		}
+// 		return jwtSecret, nil
+// 	})
+// }
+// Validar token
 func ValidateJWT(tokenString string) (*jwt.Token, error) {
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Verifica el método de firma
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
-		return jwtSecret, nil
+		return getJWTSecret(), nil
 	})
 }
