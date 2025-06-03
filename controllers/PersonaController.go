@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
+	"github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
 
