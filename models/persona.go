@@ -7,8 +7,8 @@ type Persona struct {
     Nombre          string    `gorm:"size:100;not null"`
     ApellidoPaterno string    `gorm:"size:100;not null"`
     ApellidoMaterno string    `gorm:"size:100;not null"`
-    Telefono        string    `gorm:"size:15"`
-    FechaNacimiento time.Time
+    Telefono        string    `gorm:"size:10"`
+    FechaNacimiento time.Time `gorm:"type:date"`    
     Genero          string    `gorm:"type:varchar(20);check(genero IN ('masculino', 'femenino', 'otro'))"`
     Direccion       string    `gorm:"type:text"`
     

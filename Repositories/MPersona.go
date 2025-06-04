@@ -1,38 +1,68 @@
 package repositories
 
 import (
-	"github.com/Ilimm9/CMedicas/models"
+	"errors"
 	"gorm.io/gorm"
+	"github.com/Ilimm9/CMedicas/models"
+	"github.com/Ilimm9/CMedicas/initializers"
 )
 
-type PersonaRepository struct {
-	db *gorm.DB
-}
-
-func NuevaPersona(db *gorm.DB) *PersonaRepository {
-	return &PersonaRepository{db: db}
-}
-
-func (r *PersonaRepository) Create(persona *models.Persona) error {
-	return r.db.Create(persona).Error
-}
-
-func (r *PersonaRepository) ConsultarPersonas() ([]models.Persona, error) {
-	var personas []models.Persona
-	err := r.db.Find(&personas).Error
-	return personas, err
-}
-
-func (r *PersonaRepository) ConsultarPersonaID(id uint) (models.Persona, error) {
+func ExistePersonaPorID(personaID uint) (bool, error) {
 	var persona models.Persona
-	err := r.db.First(&persona, id).Error
-	return persona, err
+	err := initializers.GetDB().First(&persona, personaID).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
-func (r *PersonaRepository) Update(id uint, persona models.Persona) error {
-	return r.db.Model(&models.Persona{}).Where("id = ?", id).Updates(persona).Error
+func ExisteUsuarioPorCorreo(correo string) (bool, error) {
+	var usuario models.Usuario
+	err := initializers.GetDB().Where("correo = ?", correo).First(&usuario).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
-func (r *PersonaRepository) Delete(id uint) error {
-	return r.db.Delete(&models.Persona{}, id).Error
+// Buscar una persona por ID
+func ObtenerPersonaPorID(id int) (*models.Persona, error) {
+	var persona models.Persona
+	if err := initializers.GetDB().First(&persona, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, gorm.ErrRecordNotFound
+		}
+		return nil, err
+	}
+	return &persona, nil
+}
+
+// Crear una nueva persona
+func CrearPersona(persona *models.Persona) error {
+	if err := initializers.GetDB().Create(persona).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// Actualizar los datos de una persona existente
+func ActualizarPersona(persona *models.Persona) error {
+	if err := initializers.GetDB().Save(persona).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// Eliminar persona por ID
+func EliminarPersona(id int) error {
+	if err := initializers.GetDB().Delete(&models.Persona{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }

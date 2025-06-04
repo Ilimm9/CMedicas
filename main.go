@@ -10,7 +10,8 @@ import (
 
 
 func init(){
-	initializers.LoadEnv()
+	// solo para modo local
+	// initializers.LoadEnv()
 	initializers.ConnectDB()
 	migrate.Migrations()
 }

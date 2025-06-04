@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Ilimm9/CMedicas/Repositories"
 	"github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
@@ -25,41 +26,19 @@ type PersonaInput struct {
 
 // Crear una nueva persona
 func PostPersona(c *gin.Context) {
-	var input PersonaInput
+	var input models.Persona
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, "Datos inválidos: "+err.Error())
 		return
 	}
 
-	tx := initializers.GetDB().Begin()
-	if tx.Error != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+	if err := repositories.CrearPersona(&input); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al crear persona: "+err.Error())
 		return
 	}
 
-	persona := models.Persona{
-		Nombre:          input.Nombre,
-		ApellidoPaterno: input.ApellidoPaterno,
-		ApellidoMaterno: input.ApellidoMaterno,
-		Telefono:        input.Telefono,
-		FechaNacimiento: input.FechaNacimiento,
-		Genero:          input.Genero,
-		Direccion:       input.Direccion,
-	}
-
-	if err := tx.Create(&persona).Error; err != nil {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al guardar persona: "+err.Error())
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
-		return
-	}
-
-	respuestas.RespondSuccess(c, http.StatusCreated, persona)
+	respuestas.RespondSuccess(c, http.StatusCreated, input)
 }
 
 // Obtener una persona por ID
@@ -104,46 +83,19 @@ func UpdatePersona(c *gin.Context) {
 		return
 	}
 
-	var input PersonaInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
+	persona, err := repositories.ObtenerPersonaPorID(id)
+	if err != nil {
+		respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
 		return
 	}
 
-	tx := initializers.GetDB().Begin()
-	if tx.Error != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+	if err := c.ShouldBindJSON(persona); err != nil {
+		respuestas.RespondError(c, http.StatusBadRequest, "Datos inválidos: "+err.Error())
 		return
 	}
 
-	var persona models.Persona
-	if err := tx.First(&persona, id).Error; err != nil {
-		tx.Rollback()
-		if err == gorm.ErrRecordNotFound {
-			respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
-		} else {
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar persona: "+err.Error())
-		}
-		return
-	}
-
-	// Actualizar campos
-	persona.Nombre = input.Nombre
-	persona.ApellidoPaterno = input.ApellidoPaterno
-	persona.ApellidoMaterno = input.ApellidoMaterno
-	persona.Telefono = input.Telefono
-	persona.FechaNacimiento = input.FechaNacimiento
-	persona.Genero = input.Genero
-	persona.Direccion = input.Direccion
-
-	if err := tx.Save(&persona).Error; err != nil {
-		tx.Rollback()
+	if err := repositories.ActualizarPersona(persona); err != nil {
 		respuestas.RespondError(c, http.StatusInternalServerError, "Error al actualizar persona: "+err.Error())
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
 		return
 	}
 
@@ -158,29 +110,23 @@ func DeletePersona(c *gin.Context) {
 		return
 	}
 
-	tx := initializers.GetDB().Begin()
-	if tx.Error != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+	// Verificar si la persona existe
+	_, err = repositories.ObtenerPersonaPorID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
+		} else {
+			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar persona: "+err.Error())
+		}
 		return
 	}
 
-	result := tx.Delete(&models.Persona{}, id)
-	if result.Error != nil {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar persona: "+result.Error.Error())
+	// Eliminar si existe
+	if err := repositories.EliminarPersona(id); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar persona: "+err.Error())
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
-		return
-	}
-
-	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"message": "Persona eliminada correctamente"})
+	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"mensaje": "Persona eliminada correctamente"})
 }
+

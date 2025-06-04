@@ -5,7 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	respuestas "github.com/Ilimm9/CMedicas/Respuestas"
+	repositories "github.com/Ilimm9/CMedicas/Repositories"
+	"github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/clave"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
@@ -21,7 +22,6 @@ type UsuarioInput struct {
 	Contrasena string `json:"contrasena" binding:"required,min=8"`
 }
 
-// Crear nuevo usuario
 func PostUsuario(c *gin.Context) {
 	var input UsuarioInput
 
@@ -30,23 +30,36 @@ func PostUsuario(c *gin.Context) {
 		return
 	}
 
-	// prsn existente
-	var persona models.Persona
-	if err := initializers.GetDB().First(&persona, input.PersonaID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			respuestas.RespondError(c, http.StatusBadRequest, "Persona no encontrada")
-		} else {
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar persona: "+err.Error())
-		}
+	// Validar que la persona existe
+	existePersona, err := repositories.ExistePersonaPorID(input.PersonaID)
+	if err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar persona: "+err.Error())
+		return
+	}
+	if !existePersona {
+		respuestas.RespondError(c, http.StatusBadRequest, "Persona no encontrada")
 		return
 	}
 
+	// Validar que el correo no está registrado
+	existeCorreo, err := repositories.ExisteUsuarioPorCorreo(input.Correo)
+	if err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar correo: "+err.Error())
+		return
+	}
+	if existeCorreo {
+		respuestas.RespondError(c, http.StatusBadRequest, "El correo ya está registrado")
+		return
+	}
+
+	// Hashear contraseña
 	hashedPassword, err := clave.HashPassword(input.Contrasena)
 	if err != nil {
 		respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
 		return
 	}
 
+	// Crear usuario
 	tx := initializers.GetDB().Begin()
 	if tx.Error != nil {
 		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
@@ -71,10 +84,12 @@ func PostUsuario(c *gin.Context) {
 		return
 	}
 
+	// No devolver contraseña en la respuesta
 	usuario.Contrasena = ""
 
 	respuestas.RespondSuccess(c, http.StatusCreated, usuario)
 }
+
 
 func RegistroCompleto(c *gin.Context) {
 	// 1. Estructura para el input

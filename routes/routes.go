@@ -14,9 +14,6 @@ func AdminRutas(r *gin.Engine) {
 		// Autenticación
 		public.POST("/auth/registro", controllers.RegistroCompleto)
 		public.POST("/auth/login", controllers.Login)
-		
-		// public.GET("/medicos/disponibles", controllers.GetMedicosDisponibles)
-		// public.GET("/especialidades", controllers.GetEspecialidades)
 	}
 
 
@@ -33,7 +30,7 @@ func AdminRutas(r *gin.Engine) {
 		{
 			persona.GET("", controllers.GetAllPersonas)
 			persona.GET("/:id", controllers.GetPersona)
-			persona.POST("", controllers.PostPersona) 
+			// persona.POST("", controllers.PostPersona) 
 			persona.PUT("/:id", controllers.UpdatePersona)
 		}
 
