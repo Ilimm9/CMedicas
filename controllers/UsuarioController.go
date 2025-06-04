@@ -1,13 +1,15 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
-	repositories "github.com/Ilimm9/CMedicas/Repositories"
+	"github.com/Ilimm9/CMedicas/Repositories"
 	"github.com/Ilimm9/CMedicas/Respuestas"
 	"github.com/Ilimm9/CMedicas/clave"
+	"github.com/Ilimm9/CMedicas/dto"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
 
@@ -15,54 +17,26 @@ import (
 	"gorm.io/gorm"
 )
 
-type UsuarioInput struct {
-	PersonaID  uint   `json:"persona_id" binding:"required"`
-	Rol        string `json:"rol" binding:"required,oneof=paciente medico administrador"`
-	Correo     string `json:"correo" binding:"required,email"`
-	Contrasena string `json:"contrasena" binding:"required,min=8"`
-}
-
 func PostUsuario(c *gin.Context) {
-	var input UsuarioInput
-
+	var input dto.UsuarioInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Validar que la persona existe
-	existePersona, err := repositories.ExistePersonaPorID(input.PersonaID)
-	if err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar persona: "+err.Error())
-		return
-	}
-	if !existePersona {
+	if !repositories.ExistePersonaPorID(input.PersonaID) {
 		respuestas.RespondError(c, http.StatusBadRequest, "Persona no encontrada")
 		return
 	}
 
-	// Validar que el correo no está registrado
-	existeCorreo, err := repositories.ExisteUsuarioPorCorreo(input.Correo)
-	if err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al verificar correo: "+err.Error())
-		return
-	}
-	if existeCorreo {
-		respuestas.RespondError(c, http.StatusBadRequest, "El correo ya está registrado")
+	if repositories.ExisteCorreo(input.Correo) {
+		respuestas.RespondError(c, http.StatusBadRequest, "Correo ya registrado")
 		return
 	}
 
-	// Hashear contraseña
 	hashedPassword, err := clave.HashPassword(input.Contrasena)
 	if err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
-		return
-	}
-
-	// Crear usuario
-	tx := initializers.GetDB().Begin()
-	if tx.Error != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+		respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña")
 		return
 	}
 
@@ -73,23 +47,20 @@ func PostUsuario(c *gin.Context) {
 		Contrasena: hashedPassword,
 	}
 
-	if err := tx.Create(&usuario).Error; err != nil {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al guardar usuario: "+err.Error())
+	if err := repositories.CrearUsuario(&usuario); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
-		return
+	response := dto.UsuarioResponse{
+		ID:        usuario.ID,
+		PersonaID: usuario.PersonaID,
+		Rol:       usuario.Rol,
+		Correo:    usuario.Correo,
 	}
 
-	// No devolver contraseña en la respuesta
-	usuario.Contrasena = ""
-
-	respuestas.RespondSuccess(c, http.StatusCreated, usuario)
+	respuestas.RespondSuccess(c, http.StatusCreated, response)
 }
-
 
 func RegistroCompleto(c *gin.Context) {
 	// 1. Estructura para el input
@@ -184,20 +155,27 @@ func GetUsuario(c *gin.Context) {
 		return
 	}
 
-	var usuario models.Usuario
-	result := initializers.GetDB().Preload("Persona").First(&usuario, id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
+	usuario, err := repositories.ObtenerUsuarioPorID(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
 		} else {
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+result.Error.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	usuario.Contrasena = ""
-	respuestas.RespondSuccess(c, http.StatusOK, usuario)
+	response := dto.UsuarioResponse{
+		ID:        usuario.ID,
+		PersonaID: usuario.PersonaID,
+		Rol:       usuario.Rol,
+		Correo:    usuario.Correo,
+	}
+
+	respuestas.RespondSuccess(c, http.StatusOK, response)
 }
+
+
 
 // Obtener todos los usuarios
 func GetAllUsuarios(c *gin.Context) {
@@ -224,65 +202,27 @@ func UpdateUsuario(c *gin.Context) {
 		return
 	}
 
-	var input struct {
-		Rol        string `json:"rol" binding:"omitempty,oneof=paciente medico administrador"`
-		Correo     string `json:"correo" binding:"omitempty,email"`
-		Contrasena string `json:"contrasena" binding:"omitempty,min=8"`
-	}
-
+	var input dto.UsuarioInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	tx := initializers.GetDB().Begin()
-	if tx.Error != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+	usuario := models.Usuario{
+		Correo:    input.Correo,
+		Contrasena: input.Contrasena,
+		Rol:       input.Rol,
+		PersonaID: input.PersonaID,
+	}
+
+	if err := repositories.ActualizarUsuario(uint(id), &usuario); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	var usuario models.Usuario
-	if err := tx.Preload("Persona").First(&usuario, id).Error; err != nil {
-		tx.Rollback()
-		if err == gorm.ErrRecordNotFound {
-			respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
-		} else {
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar usuario: "+err.Error())
-		}
-		return
-	}
-
-	// Actualizar unicamente los campos enviados
-	if input.Rol != "" {
-		usuario.Rol = input.Rol
-	}
-	if input.Correo != "" {
-		usuario.Correo = input.Correo
-	}
-	if input.Contrasena != "" {
-		hashedPassword, err := clave.HashPassword(input.Contrasena)
-		if err != nil {
-			tx.Rollback()
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al hashear contraseña: "+err.Error())
-			return
-		}
-		usuario.Contrasena = hashedPassword
-	}
-
-	if err := tx.Save(&usuario).Error; err != nil {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al actualizar usuario: "+err.Error())
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
-		return
-	}
-
-	usuario.Contrasena = ""
-	respuestas.RespondSuccess(c, http.StatusOK, usuario)
+	respuestas.RespondSuccess(c, http.StatusOK, "Usuario actualizado correctamente")
 }
+
 
 // Eliminar usuario
 func DeleteUsuario(c *gin.Context) {
@@ -292,32 +232,14 @@ func DeleteUsuario(c *gin.Context) {
 		return
 	}
 
-	tx := initializers.GetDB().Begin()
-	if tx.Error != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al iniciar transacción: "+tx.Error.Error())
+	if err := repositories.EliminarUsuario(uint(id)); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	result := tx.Delete(&models.Usuario{}, id)
-	if result.Error != nil {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar usuario: "+result.Error.Error())
-		return
-	}
-
-	if result.RowsAffected == 0 {
-		tx.Rollback()
-		respuestas.RespondError(c, http.StatusNotFound, "Usuario no encontrado")
-		return
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al confirmar transacción: "+err.Error())
-		return
-	}
-
-	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"message": "Usuario eliminado correctamente"})
+	respuestas.RespondSuccess(c, http.StatusOK, "Usuario eliminado correctamente")
 }
+
 
 // Autenticar un usuario y devolver token JWT
 func Login(c *gin.Context) {

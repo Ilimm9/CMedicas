@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Ilimm9/CMedicas/Repositories"
 	"github.com/Ilimm9/CMedicas/Respuestas"
+	"github.com/Ilimm9/CMedicas/dto"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
 
@@ -14,32 +16,49 @@ import (
 	"gorm.io/gorm"
 )
 
-type PersonaInput struct {
-	Nombre          string    `json:"nombre" binding:"required"`
-	ApellidoPaterno string    `json:"apellido_paterno" binding:"required"`
-	ApellidoMaterno string    `json:"apellido_materno" binding:"required"`
-	Telefono        string    `json:"telefono"`
-	FechaNacimiento time.Time `json:"fecha_nacimiento"`
-	Genero          string    `json:"genero" binding:"required,oneof=masculino femenino otro"`
-	Direccion       string    `json:"direccion"`
-}
-
 // Crear una nueva persona
 func PostPersona(c *gin.Context) {
-	var input models.Persona
-
+	var input dto.PersonaInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		respuestas.RespondError(c, http.StatusBadRequest, "Datos inválidos: "+err.Error())
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := repositories.CrearPersona(&input); err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al crear persona: "+err.Error())
+	fecha, err := time.Parse("2006-01-02", input.FechaNacimiento)
+	if err != nil {
+		respuestas.RespondError(c, http.StatusBadRequest, "Formato de fecha inválido (usa YYYY-MM-DD)")
 		return
 	}
 
-	respuestas.RespondSuccess(c, http.StatusCreated, input)
+	persona := models.Persona{
+		Nombre:          input.Nombre,
+		ApellidoPaterno: input.ApellidoPaterno,
+		ApellidoMaterno: input.ApellidoMaterno,
+		Telefono:        input.Telefono,
+		FechaNacimiento: fecha,
+		Genero:          input.Genero,
+		Direccion:       input.Direccion,
+	}
+
+	if err := repositories.CrearPersona(&persona); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response := dto.PersonaResponse{
+		ID:              persona.ID,
+		Nombre:          persona.Nombre,
+		ApellidoPaterno: persona.ApellidoPaterno,
+		ApellidoMaterno: persona.ApellidoMaterno,
+		Telefono:        persona.Telefono,
+		FechaNacimiento: persona.FechaNacimiento.Format("2006-01-02"),
+		Genero:          persona.Genero,
+		Direccion:       persona.Direccion,
+	}
+
+	respuestas.RespondSuccess(c, http.StatusCreated, response)
 }
+
 
 // Obtener una persona por ID
 func GetPersona(c *gin.Context) {
@@ -49,19 +68,31 @@ func GetPersona(c *gin.Context) {
 		return
 	}
 
-	var persona models.Persona
-	result := initializers.GetDB().First(&persona, id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
+	persona, err := repositories.ObtenerPersonaPorID(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
 		} else {
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar persona: "+result.Error.Error())
+			respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	respuestas.RespondSuccess(c, http.StatusOK, persona)
+	response := dto.PersonaResponse{
+		ID:              persona.ID,
+		Nombre:          persona.Nombre,
+		ApellidoPaterno: persona.ApellidoPaterno,
+		ApellidoMaterno: persona.ApellidoMaterno,
+		Telefono:        persona.Telefono,
+		FechaNacimiento: persona.FechaNacimiento.Format("2006-01-02"),
+		Genero:          persona.Genero,
+		Direccion:       persona.Direccion,
+	}
+
+	respuestas.RespondSuccess(c, http.StatusOK, response)
 }
+
+
 
 // Obtener todas las personas
 func GetAllPersonas(c *gin.Context) {
@@ -83,24 +114,36 @@ func UpdatePersona(c *gin.Context) {
 		return
 	}
 
-	persona, err := repositories.ObtenerPersonaPorID(id)
+	var input dto.PersonaInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		respuestas.RespondError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	fecha, err := time.Parse("2006-01-02", input.FechaNacimiento)
 	if err != nil {
-		respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
+		respuestas.RespondError(c, http.StatusBadRequest, "Formato de fecha inválido (usa YYYY-MM-DD)")
 		return
 	}
 
-	if err := c.ShouldBindJSON(persona); err != nil {
-		respuestas.RespondError(c, http.StatusBadRequest, "Datos inválidos: "+err.Error())
+	persona := models.Persona{
+		Nombre:          input.Nombre,
+		ApellidoPaterno: input.ApellidoPaterno,
+		ApellidoMaterno: input.ApellidoMaterno,
+		Telefono:        input.Telefono,
+		FechaNacimiento: fecha,
+		Genero:          input.Genero,
+		Direccion:       input.Direccion,
+	}
+
+	if err := repositories.ActualizarPersona(uint(id), &persona); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if err := repositories.ActualizarPersona(persona); err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al actualizar persona: "+err.Error())
-		return
-	}
-
-	respuestas.RespondSuccess(c, http.StatusOK, persona)
+	respuestas.RespondSuccess(c, http.StatusOK, "Persona actualizada correctamente")
 }
+
 
 // Elimina una persona
 func DeletePersona(c *gin.Context) {
@@ -110,23 +153,12 @@ func DeletePersona(c *gin.Context) {
 		return
 	}
 
-	// Verificar si la persona existe
-	_, err = repositories.ObtenerPersonaPorID(id)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			respuestas.RespondError(c, http.StatusNotFound, "Persona no encontrada")
-		} else {
-			respuestas.RespondError(c, http.StatusInternalServerError, "Error al buscar persona: "+err.Error())
-		}
+	if err := repositories.EliminarPersona(uint(id)); err != nil {
+		respuestas.RespondError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Eliminar si existe
-	if err := repositories.EliminarPersona(id); err != nil {
-		respuestas.RespondError(c, http.StatusInternalServerError, "Error al eliminar persona: "+err.Error())
-		return
-	}
-
-	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"mensaje": "Persona eliminada correctamente"})
+	respuestas.RespondSuccess(c, http.StatusOK, "Persona eliminada correctamente")
 }
+
 
