@@ -82,6 +82,17 @@ func PostCita(c *gin.Context) {
 		return
 	}
 
+
+// 	Enviar correo de cnfirmacion de cita creada exitosamente, o solo mostrar notificacion en app?
+// correo := notificacion.Usuario.Correo // Asegúrate de que esto esté cargado correctamente
+
+// err := clave.EnviarCorreo(correo, "Notificación "+notificacion.Tipo, notificacion.Mensaje)
+// if err != nil {
+//     // Puedes loguearlo, pero no es necesario cortar el flujo
+//     fmt.Println("Error al enviar correo:", err)
+// }
+
+
 	// Cargar relaciones para la respuesta
 	if err := initializers.GetDB().
 		Preload("Paciente").
@@ -95,6 +106,7 @@ func PostCita(c *gin.Context) {
 	}
 
 	respuestas.RespondSuccess(c, http.StatusCreated, cita)
+
 }
 
 // Obtener una cita por ID

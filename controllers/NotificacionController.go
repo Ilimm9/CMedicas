@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Ilimm9/CMedicas/Respuestas"
+	"github.com/Ilimm9/CMedicas/clave"
 	"github.com/Ilimm9/CMedicas/initializers"
 	"github.com/Ilimm9/CMedicas/models"
 
@@ -14,10 +16,10 @@ import (
 )
 
 type NotificacionInput struct {
-	IDUsuario uint   `json:"usuario_id" binding:"required"`
+	IDUsuario uint   `json:"id_usuario" binding:"required"`
 	CitaID    uint   `json:"cita_id" binding:"required"`
-	Tipo      string `json:"tipo" binding:"required,oneof=confirmación recordatorio cancelación"`
-	Mensaje   string `json:"mensaje" binding:"required,max=500"`
+	Tipo      string `json:"tipo" binding:"required"`
+	Mensaje   string `json:"mensaje" binding:"required"`
 }
 
 // Crear notificación
@@ -76,6 +78,7 @@ func PostNotificacion(c *gin.Context) {
 		return
 	}
 
+	// Recargar notificación con relaciones
 	if err := initializers.GetDB().
 		Preload("Usuario").
 		Preload("Usuario.Persona").
@@ -87,8 +90,21 @@ func PostNotificacion(c *gin.Context) {
 		return
 	}
 
+	// Enviar correo si hay correo del usuario
+	if notificacion.Usuario.Correo != "" {
+		err := clave.EnviarCorreo(
+			notificacion.Usuario.Correo,
+			"Notificación "+notificacion.Tipo,
+			notificacion.Mensaje,
+		)
+		if err != nil {
+			fmt.Println("Error al enviar correo:", err)
+		}
+	}
+
 	respuestas.RespondSuccess(c, http.StatusCreated, notificacion)
 }
+
 
 // Obtiener notificación por ID
 func GetNotificacion(c *gin.Context) {
@@ -269,3 +285,12 @@ func DeleteNotificacion(c *gin.Context) {
 
 	respuestas.RespondSuccess(c, http.StatusOK, gin.H{"message": "Notificación eliminada correctamente"})
 }
+
+// func GetNotificacionesUsuario(c *gin.Context) {
+//     idUsuario := c.Param("id") // o extraído del token
+
+//     var notificaciones []models.Notificacion
+//     db.Where("id_usuario = ?", idUsuario).Order("fecha_envio DESC").Find(&notificaciones)
+
+//     c.JSON(http.StatusOK, notificaciones)
+// }

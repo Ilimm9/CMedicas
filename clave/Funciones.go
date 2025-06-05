@@ -1,11 +1,13 @@
 package clave
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/gomail.v2"
 )
 
 // Generar hash bcrypt de la contraseña
@@ -64,3 +66,20 @@ func ValidateJWT(tokenString string) (*jwt.Token, error) {
 		return getJWTSecret(), nil
 	})
 }
+
+
+func EnviarCorreo(destinatario, asunto, mensaje string) error {
+	m := gomail.NewMessage()
+	m.SetHeader("From", "candcfly9@gmail.com")
+	m.SetHeader("To", destinatario)
+	m.SetHeader("Subject", asunto)
+	m.SetBody("text/plain", mensaje)
+
+	d := gomail.NewDialer("smtp.gmail.com", 587,"MAIL_USER", "MAIL_PASS")
+
+	if err := d.DialAndSend(m); err != nil {
+		return fmt.Errorf("no se pudo enviar el correo: %w", err)
+	}
+	return nil
+}
+agr
