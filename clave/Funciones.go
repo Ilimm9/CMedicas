@@ -67,7 +67,6 @@ func ValidateJWT(tokenString string) (*jwt.Token, error) {
 	})
 }
 
-
 func EnviarCorreo(destinatario, asunto, mensaje string) error {
 	m := gomail.NewMessage()
 	m.SetHeader("From", "candcfly9@gmail.com")
@@ -75,11 +74,16 @@ func EnviarCorreo(destinatario, asunto, mensaje string) error {
 	m.SetHeader("Subject", asunto)
 	m.SetBody("text/plain", mensaje)
 
-	d := gomail.NewDialer("smtp.gmail.com", 587,"MAIL_USER", "MAIL_PASS")
+	d := gomail.NewDialer(
+    "smtp.gmail.com",
+    587,
+    os.Getenv("MAIL_USER"),
+    os.Getenv("MAIL_PASS"),
+	)
+
 
 	if err := d.DialAndSend(m); err != nil {
 		return fmt.Errorf("no se pudo enviar el correo: %w", err)
 	}
 	return nil
 }
-agr
